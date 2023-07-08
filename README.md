@@ -1,4 +1,4 @@
-<h1>Two versions of django-docker builds<h1>
+<h1>Two versions of django-docker builds</h1>
 
 **app_no_migrations**
 
