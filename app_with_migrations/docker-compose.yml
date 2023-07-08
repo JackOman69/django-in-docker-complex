@@ -1,0 +1,59 @@
+version: '3.7'
+
+services: 
+  app:
+    build: .
+    command: /bin/sh -c "cd /usr/src; python ./manage.py migrate --noinput; gunicorn fitness.wsgi --bind 0.0.0.0:8008"
+    volumes:
+      - .:/usr/src
+      - ./persistentdata/static:/usr/src/static
+      - ./persistentdata/media:/usr/src/media
+    expose:
+      - 8008
+    depends_on:
+      - postgresql
+    networks:
+      - net
+
+  postgresql:
+    build: ./postgres
+    container_name: postgresql
+    environment:
+      - POSTGRES_USER=django
+      - POSTGRES_PASSWORD=djingo
+      - POSTGRES_DB=django_db
+    ports:
+      - 5432:5432
+    volumes:
+      - ./postgres/backup/db.sql:/docker-entrypoint-initdb.d/2-data.sql
+    networks:
+      - net
+
+  nginx:
+    restart: always
+    build:
+        context: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./persistentdata/certbot/conf:/etc/letsencrypt
+      - ./persistentdata/certbot/www:/usr/src/certbot
+      - ./persistentdata/static:/usr/src/static
+      - ./persistentdata/media:/usr/src/media
+    depends_on:
+      - app
+    networks:
+      - net
+
+  certbot:
+    image: certbot/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    volumes:
+      - ./persistentdata/certbot/conf:/etc/letsencrypt
+      - ./persistentdata/certbot/www:/usr/src/certbot
+    networks:
+      - net
+
+networks:
+  net:
